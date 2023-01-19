@@ -324,6 +324,7 @@ If (!($listeners | Where-Object { $_.Keys -like "TRANSPORT=HTTPS" })) {
     $selectorset = @{
         Transport = "HTTPS"
         Address = "*"
+        Port = 9182
     }
 
     Write-Verbose "Enabling SSL listener."
