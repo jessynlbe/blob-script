@@ -350,6 +350,7 @@ Else {
         $selectorset = @{
             Address = "*"
             Transport = "HTTPS"
+            Port = 9182
         }
         Remove-WSManInstance -ResourceURI 'winrm/config/Listener' -SelectorSet $selectorset
 
