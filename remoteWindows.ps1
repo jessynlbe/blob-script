@@ -319,12 +319,12 @@ If (!($listeners | Where-Object { $_.Keys -like "TRANSPORT=HTTPS" })) {
     $valueset = @{
         Hostname = $SubjectName
         CertificateThumbprint = $thumbprint
+        Port = 9182
     }
 
     $selectorset = @{
         Transport = "HTTPS"
         Address = "*"
-        Port = 9182
     }
 
     Write-Verbose "Enabling SSL listener."
@@ -344,13 +344,13 @@ Else {
         $valueset = @{
             CertificateThumbprint = $thumbprint
             Hostname = $SubjectName
+            Port = 9182
         }
 
         # Delete the listener for SSL
         $selectorset = @{
             Address = "*"
             Transport = "HTTPS"
-            Port = 9182
         }
         Remove-WSManInstance -ResourceURI 'winrm/config/Listener' -SelectorSet $selectorset
 
