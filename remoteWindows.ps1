@@ -402,6 +402,7 @@ $fwtest2 = netsh advfirewall firewall show rule name="Allow WinRM HTTPS" profile
 If ($fwtest1.count -lt 5) {
     Write-Verbose "Adding firewall rule to allow WinRM HTTPS."
     netsh advfirewall firewall add rule profile=any name="Allow WinRM HTTPS" dir=in localport=9182 protocol=TCP action=allow
+    netsh advfirewall firewall add rule profile=any name="Allow WinRM HTTPS" dir=in localport=5986 protocol=TCP action=allow
     Write-ProgressLog "Added firewall rule to allow WinRM HTTPS."
 }
 ElseIf (($fwtest1.count -ge 5) -and ($fwtest2.count -lt 5)) {
