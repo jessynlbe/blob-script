@@ -1,92 +1,61 @@
 ---
 
-# - hosts: localhost
-#   connection: local
-#   gather_facts: no
-#   vars_files: my_vars.yml
-
-#   tasks:
-#   - name: Create a resource group
-#     azure.azcollection.azure_rm_resourcegroup:
-#       # state: absent
-#       name: myResourceGroup2
-#       location: francecentral
-#       tenant: "{{ tenant }}"
-#       subscription_id: "{{ subscription_id }}"
-#       client_id: "{{ client_id }}"
-#       secret: "{{ secret }}"
-#       tags:
-#           testing: testing
-#           delete: never
-
-  # - name: Add host to multiple groups
-  #   add_host:
-  #     group: serverlist
-  #     hostname: 'vm-FO_ROR'
-  #     # ansible_user: 'adminuser'
-  #     ansible_host: '20.111.33.57'
-
-  # - name: dezdez
-  #   add_host:
-  #     group: 'serverlist-win'
-  #     hostname: 'vm-win'
-  #     ansible_user: 'gradesadmin'
-  #     ansible_password: 'Password1234.'
-  #     ansible_connection: 'winrm'
-  #     ansible_transport: 'ntlm'
-  #     ansible_winrm_server_cert_validation: 'ignore'
-  #     ansible_port: '9182'
-  #     ansible_host: '51.103.34.164'
-
-
-# - hosts: serverlist
-#   gather_facts: no
-#   tasks:
-
-#   - name: print
-#     ping:
-
-# - hosts: all
-#   gather_facts: no
-#   tasks:
-
-#   - name: print2
-#     ping:
-
 - name: Retrieve Azure VMs in a resource group
   
   hosts: localhost
   vars:
-    - list_test: {}
+    - vm_configurations: {}
+  vars_files: my_vars.yml
   tasks:
 
   - name: Retrieve virtual machines in list of resource groups
     azure_rm_virtualmachine_info:
       resource_group: '{{ item }}'
-    loop: ['test_rg-socle-francecentral-test-001']
+      tenant: "{{ tenant }}"
+      subscription_id: "{{ subscription_id }}"
+      client_id: "{{ client_id }}"
+      secret: "{{ secret }}"
+    loop: ['test_rg-socle-francecentral-test-001','test_rg-legacy-francecentral-prod-001']
     register: list_vms
 
   - name: Set fact with vm and resource group
     set_fact:
-      list_test: "{{ list_test | combine({item.name: [item.resource_group, item.admin_username, item.os_type, item.network_interface_names[0]] }) }}"
+      vm_configurations: "{{ vm_configurations | combine({item.name: [item.resource_group, item.admin_username, item.os_type, item.network_interface_names[0]] }) }}"
     loop: "{{ list_vms.results | map(attribute='vms') | flatten }}"
 
   - name: Get facts for network interfaces
     azure_rm_networkinterface_info:
       resource_group: "{{ item.value[0] }}"
       name: "{{ item.value[3] }}"
-    loop: "{{ list_test | dict2items }}"
+      tenant: "{{ tenant }}"
+      subscription_id: "{{ subscription_id }}"
+      client_id: "{{ client_id }}"
+      secret: "{{ secret }}"
+    loop: "{{ vm_configurations | dict2items }}"
     register: list_nics
 
-  - name: Fact
+  - name: Add Private Ip on vm_configurations
     set_fact:
-      list_test: "{{ list_test | combine({item.item.key: list_test[item.item.key] + [item.networkinterfaces[0].ip_configurations[0].private_ip_address]}) }}"
+      vm_configurations: "{{ vm_configurations | combine({item.item.key: vm_configurations[item.item.key] + [item.networkinterfaces[0].ip_configurations[0].private_ip_address]}) }}"
     loop: "{{ list_nics.results | flatten }}"
 
-  - name: Debug
-    debug:
-      msg: "{{ item.value }}"
-    loop: "{{ list_test | dict2items }}"
+  - name: Retrieve Key Vault Secrets
+    azure.azcollection.azure_rm_keyvaultsecret_info:
+      vault_uri: "https://kv-common-fc-test-001.vault.azure.net/"
+      name: "{{ item.key | replace('vm','pwd') | regex_replace('_','-') }}"
+      tenant: "{{ tenant }}"
+      subscription_id: "{{ subscription_id }}"
+      client_id: "{{ client_id }}"
+      secret: "{{ secret }}"
+    register: list_secrets
+    loop: "{{ vm_configurations | dict2items }}"
+    changed_when: item.value[2] == "Windows"
+
+  - name: Add secrets in vm_configurations
+    set_fact:
+      vm_configurations: "{{ vm_configurations |  
+      combine({item.item.key: vm_configurations[item.item.key] + ([item.secrets[0].secret] if (item.secrets | length) != 0 else [''] )}  )}}"
+    loop: "{{ list_secrets.results }}"
 
   - name: Add Linux host
     add_host:
@@ -95,17 +64,30 @@
       ansible_user: "{{ item.value[1] }}"
       ansible_host: "{{ item.value[4] }}"
     when: item.value[2] == "Linux"
-    loop: "{{ list_test | dict2items }}"
+    loop: "{{ vm_configurations | dict2items }}"
 
-  - name: Add Linux host
+  - name: Add Windows host
     add_host:
       group: windows
       hostname: "{{ item.key }}"
       ansible_user: "{{ item.value[1] }}"
       ansible_host: "{{ item.value[4] }}"
+      ansible_password: "{{ item.value[5] }}"
       ansible_connection: winrm
       ansible_port: 9182
       ansible_winrm_transport: ntlm
       ansible_winrm_server_cert_validation: ignore
     when: item.value[2] == "Windows"
-    loop: "{{ list_test | dict2items }}"
+    loop: "{{ vm_configurations | dict2items }}"
+
+  - name: dezdez
+    debug:
+      msg: "{{ item.value[5] }}"
+    loop: "{{ vm_configurations | dict2items }}"
+
+- hosts: windows
+  gather_facts: no
+  tasks:
+
+  - name: Print Windows
+    win_ping:
