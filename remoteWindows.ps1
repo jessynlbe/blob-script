@@ -319,7 +319,6 @@ If (!($listeners | Where-Object { $_.Keys -like "TRANSPORT=HTTPS" })) {
     $valueset = @{
         Hostname = $SubjectName
         CertificateThumbprint = $thumbprint
-        #Port = 9182
     }
 
     $selectorset = @{
@@ -344,7 +343,6 @@ Else {
         $valueset = @{
             CertificateThumbprint = $thumbprint
             Hostname = $SubjectName
-            #Port = 9182
         }
 
         # Delete the listener for SSL
@@ -403,7 +401,6 @@ $fwtest1 = netsh advfirewall firewall show rule name="Allow WinRM HTTPS"
 $fwtest2 = netsh advfirewall firewall show rule name="Allow WinRM HTTPS" profile=any
 If ($fwtest1.count -lt 5) {
     Write-Verbose "Adding firewall rule to allow WinRM HTTPS."
-    netsh advfirewall firewall add rule profile=any name="Allow WinRM HTTPS" dir=in localport=9182 protocol=TCP action=allow
     netsh advfirewall firewall add rule profile=any name="Allow WinRM HTTPS" dir=in localport=5986 protocol=TCP action=allow
     Write-ProgressLog "Added firewall rule to allow WinRM HTTPS."
 }
