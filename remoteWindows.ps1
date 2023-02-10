@@ -319,7 +319,7 @@ If (!($listeners | Where-Object { $_.Keys -like "TRANSPORT=HTTPS" })) {
     $valueset = @{
         Hostname = $SubjectName
         CertificateThumbprint = $thumbprint
-        Port = 9182
+        #Port = 9182
     }
 
     $selectorset = @{
@@ -344,7 +344,7 @@ Else {
         $valueset = @{
             CertificateThumbprint = $thumbprint
             Hostname = $SubjectName
-            Port = 9182
+            #Port = 9182
         }
 
         # Delete the listener for SSL
